@@ -50,31 +50,28 @@ We will generate code and build both converters from a single directory to minim
 
 1. Create separate output directories for each variant:
 ```
-mkdir -p build/converter-1-2
+mkdir -p build/converter-1-2  
 mkdir -p build/converter-1-3
 ```
 
-2. Generate C sources with asn1c:
+2. Generate C sources with asn1c by changing into each output directory:
+```
+cd build/converter-1-2  
+asn1c -fcompound-names -fincludes-quoted -pdu=all ../../message-1-2.asn
 
-For 1..2 constraint:
-```
-asn1c -fcompound-names -fincludes-quoted -pdu=all -output build/converter-1-2 message-1-2.asn
-```
-
-For 1..3 constraint:
-```
-asn1c -fcompound-names -fincludes-quoted -pdu=all -output build/converter-1-3 message-1-3.asn
+cd ../converter-1-3  
+asn1c -fcompound-names -fincludes-quoted -pdu=all ../../message-1-3.asn
 ```
 
-3. Build the converters using provided makefiles:
+3. Build the converters using the provided makefiles:
 ```
-make -C build/converter-1-2 -f converter-example.mk
+make -C build/converter-1-2 -f converter-example.mk  
 make -C build/converter-1-3 -f converter-example.mk
 ```
 
 4. Verify:
 ```
-build/converter-1-2/converter-example -help
+build/converter-1-2/converter-example -help  
 build/converter-1-3/converter-example -help
 ```
 
