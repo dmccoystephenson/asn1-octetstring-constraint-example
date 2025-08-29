@@ -1,7 +1,7 @@
 MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 
     Message ::= SEQUENCE {
-        advisoryMessage OCTET STRING (SIZE(1))
+        advisoryMessage OCTET STRING (SIZE(1..2))
     }
 
 END
