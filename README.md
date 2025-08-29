@@ -61,6 +61,7 @@ asn1c -fcompound-names -fincludes-quoted -pdu=all ../../message-1-2.asn
 
 cd ../converter-1-3  
 asn1c -fcompound-names -fincludes-quoted -pdu=all ../../message-1-3.asn
+cd ../../
 ```
 
 3. Build the converters using the provided makefiles:
