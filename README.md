@@ -44,11 +44,15 @@ END
 
 Compile each schema separately:
 
-# For the 1400-character schema
+### For the 1400-character schema
+```
 asn1c -fcompound-names -fincludes-quoted -pdu=all message-1400.asn
+```
 
-# For the 7000-character schema
+### For the 7000-character schema
+```
 asn1c -fcompound-names -fincludes-quoted -pdu=all message-7000.asn
+```
 
 This produces `*.c` and `*.h` files for each variant.
 
@@ -57,15 +61,15 @@ This produces `*.c` and `*.h` files for each variant.
 ## 3. Build Converter Examples
 
 Use the provided makefiles to build:
-
+```
 make -f converter-1400.mk
 make -f converter-7000.mk
-
+```
 After building, verify with:
-
+```
 ./converter-1400 -help
 ./converter-7000 -help
-
+```
 Both should support XML (XER) and UPER.
 
 ---
@@ -73,16 +77,20 @@ Both should support XML (XER) and UPER.
 ## 4. Test Messages
 
 ### msg-1400.xml
+```
 <Message>
   <advisoryMessage>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</advisoryMessage>
 </Message>
 *(repeat "A" until total length = 1400 characters)*
+```
 
 ### msg-7000.xml
+```
 <Message>
   <advisoryMessage>BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB</advisoryMessage>
 </Message>
 *(repeat "B" until total length = 7000 characters)*
+```
 
 ---
 
