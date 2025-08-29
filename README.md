@@ -89,17 +89,23 @@ Both should support XML (XER) and UPER.
 ## 5. Encode / Decode Tests
 
 ### Encode XML → UPER
+```
 ./converter-1400 -p Message -ixer -ouper msg-1400.xml > msg-1400.uper
 ./converter-7000 -p Message -ixer -ouper msg-7000.xml > msg-7000.uper
+```
 
 ### Decode UPER → XML
 # Works
+```
 ./converter-1400 -p Message -iuper -oxer msg-1400.uper > decoded-1400.xml
 ./converter-7000 -p Message -iuper -oxer msg-7000.uper > decoded-7000.xml
+```
 
 # Fails
+```
 ./converter-7000 -p Message -iuper -oxer msg-1400.uper
 ./converter-1400 -p Message -iuper -oxer msg-7000.uper
+```
 
 ---
 
