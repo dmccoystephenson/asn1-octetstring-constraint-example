@@ -49,12 +49,12 @@ END
 We will generate code and build both converters from a single directory to minimize switching:
 
 1. Create separate output directories for each variant:
-2. ```
+```
 mkdir -p build/converter-1-2
 mkdir -p build/converter-1-3
 ```
 
-3. Generate C sources with asn1c:
+2. Generate C sources with asn1c:
 
 For 1..2 constraint:
 ```
