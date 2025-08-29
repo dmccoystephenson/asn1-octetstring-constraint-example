@@ -1,0 +1,36 @@
+# Object files
+*.o
+
+# Compiled C files (from ASN.1)
+*_*.*er.c
+*_*.*er.o
+*_*_jer.c
+*_*_jer.o
+*_*_xer.c
+*_*_xer.o
+*_*_uper.c
+*_*_uper.o
+*_*_print.c
+*_*_print.o
+*_*_rfill.c
+*_*_rfill.o
+
+# Build artifacts
+converter-example
+*.a
+*.so
+*.dylib
+
+# UPER / DER / temporary encoded files
+*.uper
+*.der
+*.ber
+
+# Backup files
+*~
+*.bak
+
+# Miscellaneous
+*.oer.c
+*.oer.o
+*.xml  # optional if you want XML input files tracked, otherwise remove this line
