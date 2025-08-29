@@ -84,14 +84,16 @@ This produces *.c and *.h files for each variant within its directory.
 
 In each directory, run:
 ```
-make -f converter-1.mk    # in converter-1
-make -f converter-2.mk    # in converter-2
+make -f converter-example.mk    # in converter-1
+cp converter-example converter1
+make -f converter-example.mk    # in converter-2
+cp converter-example converter2
 ```
 
 Verify with:
 ```
-./converter-1 -help
-./converter-2 -help
+./converter1 -help
+./converter2 -help
 ```
 
 Both should support XML (XER) and UPER.
@@ -120,22 +122,22 @@ msg-2.xml:
 
 Encode XML → UPER:
 ```
-./converter-1/converter-1 -p Message -ixer -ouper msg-1.xml > msg-1.uper  
-./converter-2/converter-2 -p Message -ixer -ouper msg-2.xml > msg-2.uper
+./converter-1/converter1 -p Message -ixer -ouper msg-1.xml > msg-1.uper  
+./converter-2/converter2 -p Message -ixer -ouper msg-2.xml > msg-2.uper
 ```
 
 Decode UPER → XML:
 
 Works:
 ```
-./converter-1/converter-1 -p Message -iuper -oxer msg-1.uper > decoded-1.xml  
-./converter-2/converter-2 -p Message -iuper -oxer msg-2.uper > decoded-2.xml
+./converter-1/converter1 -p Message -iuper -oxer msg-1.uper > decoded-1.xml  
+./converter-2/converter2 -p Message -iuper -oxer msg-2.uper > decoded-2.xml
 ```
 
 Fails:
 ```
-./converter-2/converter-2 -p Message -iuper -oxer msg-1.uper  
-./converter-1/converter-1 -p Message -iuper -oxer msg-2.uper
+./converter-2/converter2 -p Message -iuper -oxer msg-1.uper  
+./converter-1/converter1 -p Message -iuper -oxer msg-2.uper
 ```
 
 ---
