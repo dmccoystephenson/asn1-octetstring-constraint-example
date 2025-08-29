@@ -144,6 +144,36 @@ Messages must be encoded and decoded with the same schema.
 
 ---
 
+## 7. Inspecting Encoded UPER Data
+
+You can observe how the **OCTET STRING constraint affects the actual UPER encoding** by inspecting the binary output with `xxd`:
+
+Example for the 1..2 character message:
+```
+xxd msg-1-2.uper
+```
+Output:
+```
+00000000: 5580                                     U.
+```
+
+Example for the 1..3 character message:
+```
+xxd msg-1-3.uper
+```
+
+Output:
+```
+00000000: 6af0 00
+```
+
+Key observations:
+
+- The first few bits of the UPER output encode the length of the OCTET STRING and other ASN.1 metadata.
+- Changing the maximum allowed size affects the encoding of even small messages, resulting in **different binary representations**.
+- This demonstrates why messages encoded with one schema variant cannot always be decoded by a converter built for a different constraint.
+
+
 ## Summary
 
 This minimal example reproduces the **OCTET STRING constraint breaking change**:
