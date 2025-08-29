@@ -1,10 +1,10 @@
 # ASN.1 OCTET STRING Constraint Example
 
 This repository demonstrates how changing the **maximum size of an OCTET STRING** in an ASN.1 schema causes a **breaking change**.  
-It mirrors the [asn1-person-example](https://github.com/dmccoystephenson/asn1-person-example) structure, but uses a `Message` type with two schema variants:
+It mirrors the asn1-person-example structure, but uses a `Message` type with two schema variants:
 
-- **1400-character limit**  
-- **7000-character limit**
+- 1-character limit  
+- 2-character limit
 
 Encoding/decoding between converters built from different schemas illustrates the incompatibility.
 
@@ -18,124 +18,144 @@ https://github.com/Trihydro/asn1_codec/tree/develop/asn1c_combined#installing-as
 
 ## 1. ASN.1 Schemas
 
-### message-1400.asn
+### message-1.asn
+```
 MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 
     Message ::= SEQUENCE {
-        advisoryMessage OCTET STRING (SIZE(1..1400))
+        advisoryMessage OCTET STRING (SIZE(1))
     }
 
 END
+```
 
-### message-7000.asn
+### message-2.asn
+```
 MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 
     Message ::= SEQUENCE {
-        advisoryMessage OCTET STRING (SIZE(1..7000))
+        advisoryMessage OCTET STRING (SIZE(2))
     }
 
 END
+```
 
-- **advisoryMessage** → binary blob or UTF-8 text, limited by schema constraint.
+- advisoryMessage → binary blob or UTF-8 text, limited by schema constraint.
 
 ---
 
-## 2. Generate Code
+## 2. Directory Structure
 
-Compile each schema separately:
-
-### For the 1400-character schema
+To keep the two converters separate, compile each ASN.1 schema in its own directory:
 ```
-asn1c -fcompound-names -fincludes-quoted -pdu=all message-1400.asn
+asn1-octetstring-constraint-example/
+- converter-1/
+  - message-1.asn
+  - *.c, *.h (generated)
+  - converter-1.mk
+- converter-2/
+  - message-2.asn
+  - *.c, *.h (generated)
+  - converter-2.mk
+- msg-1.xml
+- msg-2.xml
 ```
-
-### For the 7000-character schema
-```
-asn1c -fcompound-names -fincludes-quoted -pdu=all message-7000.asn
-```
-
-This produces `*.c` and `*.h` files for each variant.
 
 ---
 
-## 3. Build Converter Examples
+## 3. Generate Code
 
-Use the provided makefiles to build:
+Navigate into each directory and compile:
+
+In converter-1:
 ```
-make -f converter-1400.mk
-make -f converter-7000.mk
+asn1c -fcompound-names -fincludes-quoted -pdu=all message-1.asn
 ```
-After building, verify with:
+
+In converter-2:
 ```
-./converter-1400 -help
-./converter-7000 -help
+asn1c -fcompound-names -fincludes-quoted -pdu=all message-2.asn
+```
+
+This produces *.c and *.h files for each variant within its directory.
+
+---
+
+## 4. Build Converter Examples
+
+In each directory, run:
+```
+make -f converter-1.mk    # in converter-1
+make -f converter-2.mk    # in converter-2
+```
+
+Verify with:
+```
+./converter-1 -help
+./converter-2 -help
 ```
 Both should support XML (XER) and UPER.
 
 ---
 
-## 4. Test Messages
+## 5. Test Messages
 
-### msg-1400.xml
+msg-1.xml:
 ```
 <Message>
-  <advisoryMessage>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</advisoryMessage>
+  <advisoryMessage>A</advisoryMessage>
 </Message>
-*(repeat "A" until total length = 1400 characters)*
 ```
 
-### msg-7000.xml
+msg-2.xml:
 ```
 <Message>
-  <advisoryMessage>BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB</advisoryMessage>
+  <advisoryMessage>AB</advisoryMessage>
 </Message>
-*(repeat "B" until total length = 7000 characters)*
+```
+---
+
+## 6. Encode / Decode Tests
+
+Encode XML → UPER:
+```
+./converter-1/converter-1 -p Message -ixer -ouper msg-1.xml > msg-1.uper  
+./converter-2/converter-2 -p Message -ixer -ouper msg-2.xml > msg-2.uper
+```
+Decode UPER → XML:
+
+Works:
+```
+./converter-1/converter-1 -p Message -iuper -oxer msg-1.uper > decoded-1.xml  
+./converter-2/converter-2 -p Message -iuper -oxer msg-2.uper > decoded-2.xml
+```
+Fails:
+```
+./converter-2/converter-2 -p Message -iuper -oxer msg-1.uper  
+./converter-1/converter-1 -p Message -iuper -oxer msg-2.uper
 ```
 
 ---
 
-## 5. Encode / Decode Tests
+## 7. Observed Results
 
-### Encode XML → UPER
-```
-./converter-1400 -p Message -ixer -ouper msg-1400.xml > msg-1400.uper
-./converter-7000 -p Message -ixer -ouper msg-7000.xml > msg-7000.uper
-```
-
-### Decode UPER → XML
-# Works
-```
-./converter-1400 -p Message -iuper -oxer msg-1400.uper > decoded-1400.xml
-./converter-7000 -p Message -iuper -oxer msg-7000.uper > decoded-7000.xml
-```
-
-# Fails
-```
-./converter-7000 -p Message -iuper -oxer msg-1400.uper
-./converter-1400 -p Message -iuper -oxer msg-7000.uper
-```
+| Message | Encoded With | Decoded With | Result | Notes |
+|---------|--------------|--------------|--------|-------|
+| msg-1   | 1            | 1            | ✅     | Fits within original constraint |
+| msg-1   | 1            | 2            | ❌     | Schema mismatch → decoding fails |
+| msg-2   | 2            | 2            | ✅     | Fits within new constraint |
+| msg-2   | 2            | 1            | ❌     | Exceeds old constraint → decoding fails |
 
 ---
 
-## 6. Observed Results
+## 8. Key Insight
 
-| Message   | Encoded With | Decoded With | Result | Notes                                 |
-|-----------|--------------|--------------|--------|---------------------------------------|
-| msg-1400  | 1400         | 1400         | ✅     | Fits within original constraint       |
-| msg-1400  | 1400         | 7000         | ❌     | Schema mismatch → decoding fails      |
-| msg-7000  | 7000         | 7000         | ✅     | Fits within new constraint            |
-| msg-7000  | 7000         | 1400         | ❌     | Exceeds old constraint → decoding fails |
+Changing the advisoryMessage constraint from 1 to 2 characters is **not backward compatible**:
 
----
+- A decoder compiled for 2 cannot read 1-encoded messages.  
+- A decoder compiled for 1 cannot read 2-encoded messages.  
 
-## 7. Key Insight
-
-Changing the `advisoryMessage` constraint from 1400 to 7000 characters is **not backward compatible**:
-
-- A decoder compiled for 7000 cannot read 1400-encoded messages.
-- A decoder compiled for 1400 cannot read 7000-encoded messages.
-
-**Messages must be encoded and decoded with the same schema.**
+Messages must be encoded and decoded with the same schema.
 
 ---
 
@@ -143,7 +163,7 @@ Changing the `advisoryMessage` constraint from 1400 to 7000 characters is **not 
 
 This minimal example reproduces the **OCTET STRING constraint breaking change**:
 
-1. Define two schemas (`message-1400.asn`, `message-7000.asn`).  
-2. Build two converters (`converter-1400`, `converter-7000`).  
-3. Encode/decode test messages of lengths 1400 and 7000.  
-4. Observe compatibility failures when schema constraints differ.  
+1. Compile each schema in its own directory (converter-1, converter-2)  
+2. Build two converters (converter-1, converter-2)  
+3. Encode/decode test messages of lengths 1 and 2  
+4. Observe compatibility failures when schema constraints differ
