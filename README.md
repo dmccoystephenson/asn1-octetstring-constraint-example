@@ -3,8 +3,8 @@
 This repository demonstrates how changing the **maximum size of an OCTET STRING** in an ASN.1 schema causes a **breaking change**.  
 It mirrors the asn1-person-example structure, but uses a `Message` type with two schema variants:
 
-- 1–1 character limit  
-- 1–2 character limit
+- 1–2 character limit  
+- 1–3 character limit
 
 Encoding/decoding between converters built from different schemas illustrates the incompatibility.
 
@@ -18,18 +18,7 @@ https://github.com/Trihydro/asn1_codec/tree/develop/asn1c_combined#installing-as
 
 ## 1. ASN.1 Schemas
 
-### message-1.asn
-```
-MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
-
-    Message ::= SEQUENCE {
-        advisoryMessage OCTET STRING (SIZE(1..1))
-    }
-
-END
-```
-
-### message-2.asn
+message-1-2.asn:
 ```
 MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 
@@ -40,126 +29,118 @@ MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 END
 ```
 
+message-1-3.asn:
+```
+MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+
+    Message ::= SEQUENCE {
+        advisoryMessage OCTET STRING (SIZE(1..3))
+    }
+
+END
+```
+
 - advisoryMessage → binary blob or UTF-8 text, limited by schema constraint.
 
 ---
 
-## 2. Directory Structure
+## 2. Generate Code and Build Converters
 
-To keep the two converters separate, compile each ASN.1 schema in its own directory:
-```
-asn1-octetstring-constraint-example/
-- converter-1/
-  - message-1.asn
-  - *.c, *.h (generated)
-  - converter-1.mk
-- converter-2/
-  - message-2.asn
-  - *.c, *.h (generated)
-  - converter-2.mk
-- msg-1.xml
-- msg-2.xml
+We will generate code and build both converters from a single directory to minimize switching:
+
+1. Create separate output directories for each variant:
+2. ```
+mkdir -p build/converter-1-2
+mkdir -p build/converter-1-3
 ```
 
----
+3. Generate C sources with asn1c:
 
-## 3. Generate Code
-
-Navigate into each directory and compile:
-
-In converter-1:
+For 1..2 constraint:
 ```
-asn1c -fcompound-names -fincludes-quoted -pdu=all message-1.asn
+asn1c -fcompound-names -fincludes-quoted -pdu=all -output build/converter-1-2 message-1-2.asn
 ```
 
-In converter-2:
+For 1..3 constraint:
 ```
-asn1c -fcompound-names -fincludes-quoted -pdu=all message-2.asn
-```
-
-This produces *.c and *.h files for each variant within its directory.
-
----
-
-## 4. Build Converter Examples
-
-In each directory, run:
-```
-make -f converter-example.mk    # in converter-1
-cp converter-example converter1
-make -f converter-example.mk    # in converter-2
-cp converter-example converter2
+asn1c -fcompound-names -fincludes-quoted -pdu=all -output build/converter-1-3 message-1-3.asn
 ```
 
-Verify with:
+3. Build the converters using provided makefiles:
 ```
-./converter1 -help
-./converter2 -help
+make -C build/converter-1-2 -f converterexample.mk
+make -C build/converter-1-3 -f converterexample.mk
+```
+
+4. Verify:
+```
+build/converter-1-2/converter -help
+build/converter-1-3/converter -help
 ```
 
 Both should support XML (XER) and UPER.
 
 ---
 
-## 5. Test Messages
+## 3. Test Messages
 
-msg-1.xml:
-```
-<Message>
-  <advisoryMessage>A</advisoryMessage>
-</Message>
-```
-
-msg-2.xml:
+msg-1-2.xml:
 ```
 <Message>
   <advisoryMessage>AB</advisoryMessage>
 </Message>
 ```
 
+msg-1-3.xml:
+```
+<Message>
+  <advisoryMessage>ABC</advisoryMessage>
+</Message>
+```
+
 ---
 
-## 6. Encode / Decode Tests
+## 4. Encode / Decode Tests
 
 Encode XML → UPER:
 ```
-./converter-1/converter1 -p Message -ixer -ouper msg-1.xml > msg-1.uper  
-./converter-2/converter2 -p Message -ixer -ouper msg-2.xml > msg-2.uper
+build/converter-1-2/converter -p Message -ixer -ouper msg-1-2.xml > msg-1-2.uper  
+build/converter-1-3/converter -p Message -ixer -ouper msg-1-3.xml > msg-1-3.uper
 ```
 
 Decode UPER → XML:
 
 Works:
 ```
-./converter-1/converter1 -p Message -iuper -oxer msg-1.uper > decoded-1.xml  
-./converter-2/converter2 -p Message -iuper -oxer msg-2.uper > decoded-2.xml
+build/converter-1-2/converter -p Message -iuper -oxer msg-1-2.uper > decoded-1-2.xml  
+build/converter-1-3/converter -p Message -iuper -oxer msg-1-3.uper > decoded-1-3.xml
 ```
 
 Fails:
 ```
-./converter-2/converter2 -p Message -iuper -oxer msg-1.uper  
-./converter-1/converter1 -p Message -iuper -oxer msg-2.uper
+build/converter-1-3/converter -p Message -iuper -oxer msg-1-2.uper  
+build/converter-1-2/converter -p Message -iuper -oxer msg-1-3.uper
 ```
 
 ---
 
-## 7. Observed Results
+## 5. Observed Results
 
-| Message | Encoded With | Decoded With | Result | Notes |
-|---------|--------------|--------------|--------|-------|
-| msg-1   | 1            | 1            | ✅     | Fits within original constraint |
-| msg-1   | 1            | 2            | ❌     | Schema mismatch → decoding fails |
-| msg-2   | 2            | 2            | ✅     | Fits within new constraint |
-| msg-2   | 2            | 1            | ❌     | Exceeds old constraint → decoding fails |
+| Message     | Encoded With | Decoded With | Result | Notes |
+|-------------|--------------|--------------|--------|-------|
+| msg-1-2     | 1..2         | 1..2         | ✅     | Fits within original constraint |
+| msg-1-2     | 1..2         | 1..3         | ❌     | Schema mismatch → decoding fails |
+| msg-1-3     | 1..3         | 1..3         | ✅     | Fits within new constraint |
+| msg-1-3     | 1..3         | 1..2         | ❌     | Exceeds old constraint → decoding fails |
 
 ---
 
-## 8. Key Insight
+## 6. Key Insight
 
-Changing the advisoryMessage constraint from 1..1 to 1..2 characters is **not backward compatible**:
+Changing the advisoryMessage constraint from 1..2 to 1..3 characters is **not backward compatible**:
 
-- A decoder compiled for 1..2 cannot read 1..1-encoded messages exceeding its max.  
-- A decoder compiled for 1..1 cannot read 1..2-encoded messages exceeding its max.  
+- A decoder compiled for 1..3 cannot read messages encoded with 1..2 exceeding its limits.  
+- A decoder compiled for 1..2 cannot read messages encoded with 1..3 exceeding its limits.  
 
 Messages must be encoded and decoded with the same schema.
 
@@ -169,7 +150,7 @@ Messages must be encoded and decoded with the same schema.
 
 This minimal example reproduces the **OCTET STRING constraint breaking change**:
 
-1. Compile each schema in its own directory (converter-1, converter-2)  
-2. Build two converters (converter-1, converter-2)  
-3. Encode/decode test messages of lengths 1 and 2  
+1. Generate code for both schemas in separate output directories (build/converter-1-2, build/converter-1-3)  
+2. Build two converters  
+3. Encode/decode test messages of lengths 2 and 3  
 4. Observe compatibility failures when schema constraints differ
