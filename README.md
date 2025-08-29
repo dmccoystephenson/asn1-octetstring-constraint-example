@@ -19,8 +19,9 @@ https://github.com/Trihydro/asn1_codec/tree/develop/asn1c_combined#installing-as
 ## 1. ASN.1 Schemas
 
 ### message-1.asn
-MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 ```
+MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+
     Message ::= SEQUENCE {
         advisoryMessage OCTET STRING (SIZE(1..1))
     }
