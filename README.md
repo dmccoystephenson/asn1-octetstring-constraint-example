@@ -1,6 +1,14 @@
-# ASN.1 Person Example
+# ASN.1 OCTET STRING Constraint Example
 
-This repository demonstrates a **minimal ASN.1 module** compiled with `asn1c`, and how to encode/decode a `Person` object between **XML** and **Unaligned PER (UPER)** using the generated `converter-example` utility.
+This repository demonstrates how changing the **maximum size of an OCTET STRING** in an ASN.1 schema causes a **breaking change**.  
+It mirrors the [asn1-person-example](https://github.com/dmccoystephenson/asn1-person-example) structure, but uses a `Message` type with two schema variants:
+
+- **1400-character limit**  
+- **7000-character limit**
+
+Encoding/decoding between converters built from different schemas illustrates the incompatibility.
+
+---
 
 ## Install asn1c
 Install `asn1c` from the forked repository:  
@@ -8,97 +16,120 @@ https://github.com/Trihydro/asn1_codec/tree/develop/asn1c_combined#installing-as
 
 ---
 
-## 1. ASN.1 Module
+## 1. ASN.1 Schemas
 
-Save the following schema as `person.asn`:
+### message-1400.asn
+MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 
-    PersonModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+    Message ::= SEQUENCE {
+        advisoryMessage OCTET STRING (SIZE(1..1400))
+    }
 
-        Person ::= SEQUENCE {
-            name UTF8String,
-            age  INTEGER (0..150)
-        }
+END
 
-    END
+### message-7000.asn
+MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 
-- **name** → UTF-8 encoded string  
-- **age** → integer limited to 0–150  
+    Message ::= SEQUENCE {
+        advisoryMessage OCTET STRING (SIZE(1..7000))
+    }
+
+END
+
+- **advisoryMessage** → binary blob or UTF-8 text, limited by schema constraint.
 
 ---
 
 ## 2. Generate Code
 
-Run `asn1c` to compile the ASN.1 module into C sources:
+Compile each schema separately:
 
-    asn1c -fcompound-names -fincludes-quoted -pdu=all person.asn
+# For the 1400-character schema
+asn1c -fcompound-names -fincludes-quoted -pdu=all message-1400.asn
 
-**Flags explained:**
-- `-fcompound-names` → generate longer, less ambiguous C identifiers.  
-- `-fincludes-quoted` → use `#include "file.h"` instead of `<file.h>`.  
-- `-pdu=all` → generate encoder/decoder entry points for all top-level types.  
+# For the 7000-character schema
+asn1c -fcompound-names -fincludes-quoted -pdu=all message-7000.asn
 
-This produces `*.c` and `*.h` files.
+This produces `*.c` and `*.h` files for each variant.
 
 ---
 
-## 3. Build Converter Example
+## 3. Build Converter Examples
 
-Use the provided makefile to build `converter-example`:
+Use the provided makefiles to build:
 
-    make -f converter-example.mk
+make -f converter-1400.mk
+make -f converter-7000.mk
 
-This links your generated code with the ASN.1 runtime library.  
 After building, verify with:
 
-    ./converter-example -help
+./converter-1400 -help
+./converter-7000 -help
 
-You should see support for XML (XER) and UPER.
+Both should support XML (XER) and UPER.
 
 ---
 
-## 4. Test Encoding and Decoding
+## 4. Test Messages
 
-### Input XML (`person.xml`)
+### msg-1400.xml
+<Message>
+  <advisoryMessage>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</advisoryMessage>
+</Message>
+*(repeat "A" until total length = 1400 characters)*
 
-    <Person>
-      <name>Alice</name>
-      <age>30</age>
-    </Person>
+### msg-7000.xml
+<Message>
+  <advisoryMessage>BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB</advisoryMessage>
+</Message>
+*(repeat "B" until total length = 7000 characters)*
+
+---
+
+## 5. Encode / Decode Tests
 
 ### Encode XML → UPER
-
-    ./converter-example -p Person -ixer -ouper person.xml > person.uper
-
-- `-ixer` → input is XER (XML).  
-- `-ouper` → output is UPER.  
-- `-p Person` → specify the top-level ASN.1 type.
+./converter-1400 -p Message -ixer -ouper msg-1400.xml > msg-1400.uper
+./converter-7000 -p Message -ixer -ouper msg-7000.xml > msg-7000.uper
 
 ### Decode UPER → XML
+# Works
+./converter-1400 -p Message -iuper -oxer msg-1400.uper > decoded-1400.xml
+./converter-7000 -p Message -iuper -oxer msg-7000.uper > decoded-7000.xml
 
-    ./converter-example -p Person -iuper -oxer person.uper > decoded.xml
-
-- `-iuper` → input is UPER.  
-- `-oxer` → output is XER (XML).
-
-The file `decoded.xml` should match the original input.
+# Fails
+./converter-7000 -p Message -iuper -oxer msg-1400.uper
+./converter-1400 -p Message -iuper -oxer msg-7000.uper
 
 ---
 
-## 5. Inspect Encoded Data
+## 6. Observed Results
 
-Since UPER output is binary, you can inspect it with `xxd`:
+| Message   | Encoded With | Decoded With | Result | Notes                                 |
+|-----------|--------------|--------------|--------|---------------------------------------|
+| msg-1400  | 1400         | 1400         | ✅     | Fits within original constraint       |
+| msg-1400  | 1400         | 7000         | ❌     | Schema mismatch → decoding fails      |
+| msg-7000  | 7000         | 7000         | ✅     | Fits within new constraint            |
+| msg-7000  | 7000         | 1400         | ❌     | Exceeds old constraint → decoding fails |
 
-    xxd -b person.uper   # show bits
-    xxd person.uper      # show hex
+---
+
+## 7. Key Insight
+
+Changing the `advisoryMessage` constraint from 1400 to 7000 characters is **not backward compatible**:
+
+- A decoder compiled for 7000 cannot read 1400-encoded messages.
+- A decoder compiled for 1400 cannot read 7000-encoded messages.
+
+**Messages must be encoded and decoded with the same schema.**
 
 ---
 
 ## Summary
 
-You now have a minimal flow:
-1. Write ASN.1 schema (`person.asn`)  
-2. Compile with `asn1c`  
-3. Build `converter-example`  
-4. Encode/decode between XML and UPER  
+This minimal example reproduces the **OCTET STRING constraint breaking change**:
 
-This provides a foundation for experimenting with more complex ASN.1 structures.
+1. Define two schemas (`message-1400.asn`, `message-7000.asn`).  
+2. Build two converters (`converter-1400`, `converter-7000`).  
+3. Encode/decode test messages of lengths 1400 and 7000.  
+4. Observe compatibility failures when schema constraints differ.  

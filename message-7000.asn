@@ -1,0 +1,8 @@
+<!-- message-7000.asn -->
+MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+
+    Message ::= SEQUENCE {
+        advisoryMessage OCTET STRING (SIZE(1..7000))
+    }
+
+END
