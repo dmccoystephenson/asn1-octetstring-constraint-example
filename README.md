@@ -3,8 +3,8 @@
 This repository demonstrates how changing the **maximum size of an OCTET STRING** in an ASN.1 schema causes a **breaking change**.  
 It mirrors the asn1-person-example structure, but uses a `Message` type with two schema variants:
 
-- 1-character limit  
-- 2-character limit
+- 1–1 character limit  
+- 1–2 character limit
 
 Encoding/decoding between converters built from different schemas illustrates the incompatibility.
 
@@ -19,11 +19,10 @@ https://github.com/Trihydro/asn1_codec/tree/develop/asn1c_combined#installing-as
 ## 1. ASN.1 Schemas
 
 ### message-1.asn
-```
 MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
-
+```
     Message ::= SEQUENCE {
-        advisoryMessage OCTET STRING (SIZE(1))
+        advisoryMessage OCTET STRING (SIZE(1..1))
     }
 
 END
@@ -34,7 +33,7 @@ END
 MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 
     Message ::= SEQUENCE {
-        advisoryMessage OCTET STRING (SIZE(2))
+        advisoryMessage OCTET STRING (SIZE(1..2))
     }
 
 END
@@ -94,6 +93,7 @@ Verify with:
 ./converter-1 -help
 ./converter-2 -help
 ```
+
 Both should support XML (XER) and UPER.
 
 ---
@@ -113,6 +113,7 @@ msg-2.xml:
   <advisoryMessage>AB</advisoryMessage>
 </Message>
 ```
+
 ---
 
 ## 6. Encode / Decode Tests
@@ -122,6 +123,7 @@ Encode XML → UPER:
 ./converter-1/converter-1 -p Message -ixer -ouper msg-1.xml > msg-1.uper  
 ./converter-2/converter-2 -p Message -ixer -ouper msg-2.xml > msg-2.uper
 ```
+
 Decode UPER → XML:
 
 Works:
@@ -129,6 +131,7 @@ Works:
 ./converter-1/converter-1 -p Message -iuper -oxer msg-1.uper > decoded-1.xml  
 ./converter-2/converter-2 -p Message -iuper -oxer msg-2.uper > decoded-2.xml
 ```
+
 Fails:
 ```
 ./converter-2/converter-2 -p Message -iuper -oxer msg-1.uper  
@@ -150,10 +153,10 @@ Fails:
 
 ## 8. Key Insight
 
-Changing the advisoryMessage constraint from 1 to 2 characters is **not backward compatible**:
+Changing the advisoryMessage constraint from 1..1 to 1..2 characters is **not backward compatible**:
 
-- A decoder compiled for 2 cannot read 1-encoded messages.  
-- A decoder compiled for 1 cannot read 2-encoded messages.  
+- A decoder compiled for 1..2 cannot read 1..1-encoded messages exceeding its max.  
+- A decoder compiled for 1..1 cannot read 1..2-encoded messages exceeding its max.  
 
 Messages must be encoded and decoded with the same schema.
 
