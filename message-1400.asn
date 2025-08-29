@@ -1,4 +1,3 @@
-<!-- message-1400.asn -->
 MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 
     Message ::= SEQUENCE {
