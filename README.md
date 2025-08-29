@@ -68,14 +68,14 @@ asn1c -fcompound-names -fincludes-quoted -pdu=all -output build/converter-1-3 me
 
 3. Build the converters using provided makefiles:
 ```
-make -C build/converter-1-2 -f converterexample.mk
-make -C build/converter-1-3 -f converterexample.mk
+make -C build/converter-1-2 -f converter-example.mk
+make -C build/converter-1-3 -f converter-example.mk
 ```
 
 4. Verify:
 ```
-build/converter-1-2/converter -help
-build/converter-1-3/converter -help
+build/converter-1-2/converter-example -help
+build/converter-1-3/converter-example -help
 ```
 
 Both should support XML (XER) and UPER.
@@ -104,22 +104,22 @@ msg-1-3.xml:
 
 Encode XML → UPER:
 ```
-build/converter-1-2/converter -p Message -ixer -ouper msg-1-2.xml > msg-1-2.uper  
-build/converter-1-3/converter -p Message -ixer -ouper msg-1-3.xml > msg-1-3.uper
+build/converter-1-2/converter-example -p Message -ixer -ouper msg-1-2.xml > msg-1-2.uper  
+build/converter-1-3/converter-example -p Message -ixer -ouper msg-1-3.xml > msg-1-3.uper
 ```
 
 Decode UPER → XML:
 
 Works:
 ```
-build/converter-1-2/converter -p Message -iuper -oxer msg-1-2.uper > decoded-1-2.xml  
-build/converter-1-3/converter -p Message -iuper -oxer msg-1-3.uper > decoded-1-3.xml
+build/converter-1-2/converter-example -p Message -iuper -oxer msg-1-2.uper > decoded-1-2.xml  
+build/converter-1-3/converter-example -p Message -iuper -oxer msg-1-3.uper > decoded-1-3.xml
 ```
 
 Fails:
 ```
-build/converter-1-3/converter -p Message -iuper -oxer msg-1-2.uper  
-build/converter-1-2/converter -p Message -iuper -oxer msg-1-3.uper
+build/converter-1-3/converter-example -p Message -iuper -oxer msg-1-2.uper  
+build/converter-1-2/converter-example -p Message -iuper -oxer msg-1-3.uper
 ```
 
 ---
