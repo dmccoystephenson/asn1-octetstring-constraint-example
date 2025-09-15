@@ -29,12 +29,12 @@ MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 END
 ```
 
-message-1-3.asn:
+message-any.asn:
 ```
 MessageModule DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 
     Message ::= SEQUENCE {
-        advisoryMessage OCTET STRING (SIZE(1..3))
+        advisoryMessage OCTET STRING (SIZE(any))
     }
 
 END
@@ -51,7 +51,7 @@ We will generate code and build both converters from a single directory to minim
 1. Create separate output directories for each variant:
 ```
 mkdir -p build/converter-1-2  
-mkdir -p build/converter-1-3
+mkdir -p build/converter-any
 ```
 
 2. Generate C sources with asn1c by changing into each output directory:
@@ -59,21 +59,21 @@ mkdir -p build/converter-1-3
 cd build/converter-1-2  
 asn1c -fcompound-names -fincludes-quoted -pdu=all ../../message-1-2.asn
 
-cd ../converter-1-3  
-asn1c -fcompound-names -fincludes-quoted -pdu=all ../../message-1-3.asn
+cd ../converter-any  
+asn1c -fcompound-names -fincludes-quoted -pdu=all ../../message-any.asn
 cd ../../
 ```
 
 3. Build the converters using the provided makefiles:
 ```
 make -C build/converter-1-2 -f converter-example.mk  
-make -C build/converter-1-3 -f converter-example.mk
+make -C build/converter-any -f converter-example.mk
 ```
 
 4. Verify:
 ```
 build/converter-1-2/converter-example -help  
-build/converter-1-3/converter-example -help
+build/converter-any/converter-example -help
 ```
 
 Both should support XML (XER) and UPER.
@@ -89,7 +89,7 @@ msg-1-2.xml:
 </Message>
 ```
 
-msg-1-3.xml:
+msg-any.xml:
 ```
 <Message>
   <advisoryMessage>ABC</advisoryMessage>
@@ -103,7 +103,7 @@ msg-1-3.xml:
 Encode XML → UPER:
 ```
 build/converter-1-2/converter-example -p Message -ixer -ouper msg-1-2.xml > msg-1-2.uper  
-build/converter-1-3/converter-example -p Message -ixer -ouper msg-1-3.xml > msg-1-3.uper
+build/converter-any/converter-example -p Message -ixer -ouper msg-any.xml > msg-any.uper
 ```
 
 Decode UPER → XML:
@@ -111,13 +111,13 @@ Decode UPER → XML:
 Works:
 ```
 build/converter-1-2/converter-example -p Message -iuper -oxer msg-1-2.uper > decoded-1-2.xml  
-build/converter-1-3/converter-example -p Message -iuper -oxer msg-1-3.uper > decoded-1-3.xml
+build/converter-any/converter-example -p Message -iuper -oxer msg-any.uper > decoded-any.xml
 ```
 
 Fails:
 ```
-build/converter-1-3/converter-example -p Message -iuper -oxer msg-1-2.uper  
-build/converter-1-2/converter-example -p Message -iuper -oxer msg-1-3.uper
+build/converter-any/converter-example -p Message -iuper -oxer msg-1-2.uper  
+build/converter-1-2/converter-example -p Message -iuper -oxer msg-any.uper
 ```
 
 ---
@@ -127,18 +127,18 @@ build/converter-1-2/converter-example -p Message -iuper -oxer msg-1-3.uper
 | Message     | Encoded With | Decoded With | Result | Notes |
 |-------------|--------------|--------------|--------|-------|
 | msg-1-2     | 1..2         | 1..2         | ✅     | Fits within original constraint |
-| msg-1-2     | 1..2         | 1..3         | ❌     | Schema mismatch → decoding fails |
-| msg-1-3     | 1..3         | 1..3         | ✅     | Fits within new constraint |
-| msg-1-3     | 1..3         | 1..2         | ❌     | Exceeds old constraint → decoding fails |
+| msg-1-2     | 1..2         | any         | ❌     | Schema mismatch → decoding fails |
+| msg-any     | any         | any         | ✅     | Fits within new constraint |
+| msg-any     | any         | 1..2         | ❌     | Exceeds old constraint → decoding fails |
 
 ---
 
 ## 6. Key Insight
 
-Changing the advisoryMessage constraint from 1..2 to 1..3 characters is **not backward compatible**:
+Changing the advisoryMessage constraint from 1..2 to any characters is **not backward compatible**:
 
-- A decoder compiled for 1..3 cannot read messages encoded with 1..2 exceeding its limits.  
-- A decoder compiled for 1..2 cannot read messages encoded with 1..3 exceeding its limits.  
+- A decoder compiled for any cannot read messages encoded with 1..2 exceeding its limits.  
+- A decoder compiled for 1..2 cannot read messages encoded with any exceeding its limits.  
 
 Messages must be encoded and decoded with the same schema.
 
@@ -157,9 +157,9 @@ Output:
 00000000: 5580                                     U.
 ```
 
-Example for the 1..3 character message:
+Example for the any character message:
 ```
-xxd msg-1-3.uper
+xxd msg-any.uper
 ```
 
 Output:
@@ -178,7 +178,7 @@ Key observations:
 
 This minimal example reproduces the **OCTET STRING constraint breaking change**:
 
-1. Generate code for both schemas in separate output directories (build/converter-1-2, build/converter-1-3)  
+1. Generate code for both schemas in separate output directories (build/converter-1-2, build/converter-any)  
 2. Build two converters  
 3. Encode/decode test messages of lengths 2 and 3  
 4. Observe compatibility failures when schema constraints differ
