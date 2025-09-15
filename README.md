@@ -57,10 +57,10 @@ mkdir -p build/converter-1-3
 2. Generate C sources with asn1c by changing into each output directory:
 ```
 cd build/converter-1-2  
-asn1c -fcompound-names -fincludes-quoted -pdu=all ../../message-1-2.asn
+asn1c -fcompound-names -gen-OER -fincludes-quoted -no-gen-JER -pdu=all ../../message-1-2.asn
 
 cd ../converter-1-3  
-asn1c -fcompound-names -fincludes-quoted -pdu=all ../../message-1-3.asn
+asn1c -fcompound-names -gen-OER -fincludes-quoted -no-gen-JER -pdu=all ../../message-1-3.asn
 cd ../../
 ```
 
